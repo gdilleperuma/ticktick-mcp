@@ -549,33 +549,43 @@ def _get_project_tasks_by_filter(projects: List[Dict], filter_func, filter_name:
     """
     if not projects:
         return "No projects found."
-    
-    result = f"Found {len(projects)} projects:\n\n"
-    
-    for i, project in enumerate(projects, 1):
+
+    matching_projects = []
+
+    for project in projects:
         if project.get('closed'):
             continue
-            
+
         project_id = project.get('id', 'No ID')
         project_data = ticktick.get_project_with_data(project_id)
         tasks = project_data.get('tasks', [])
-        
+
         if not tasks:
-            result += f"Project {i}:\n{format_project(project)}"
-            result += f"With 0 tasks that are to be '{filter_name}' in this project :\n\n\n"
             continue
-        
+
         # Filter tasks using the provided function
         filtered_tasks = [(t, task) for t, task in enumerate(tasks, 1) if filter_func(task)]
-        
+
+        if not filtered_tasks:
+            continue
+
+        matching_projects.append((project, filtered_tasks))
+
+    if not matching_projects:
+        return f"No tasks found that are '{filter_name}'."
+
+    total_tasks = sum(len(ft) for _, ft in matching_projects)
+    result = f"Found {total_tasks} task{'s' if total_tasks != 1 else ''} '{filter_name}' across {len(matching_projects)} project{'s' if len(matching_projects) != 1 else ''}:\n\n"
+
+    for i, (project, filtered_tasks) in enumerate(matching_projects, 1):
         result += f"Project {i}:\n{format_project(project)}"
-        result += f"With {len(filtered_tasks)} tasks that are to be '{filter_name}' in this project :\n"
-        
+        result += f"{len(filtered_tasks)} task{'s' if len(filtered_tasks) != 1 else ''}:\n"
+
         for t, task in filtered_tasks:
             result += f"Task {t}:\n{format_task(task)}\n"
-        
-        result += "\n\n"
-    
+
+        result += "\n"
+
     return result
 
 # New MCP Tools for Tasks
